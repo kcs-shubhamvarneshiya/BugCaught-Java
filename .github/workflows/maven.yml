@@ -1,0 +1,50 @@
+name: SonarQube Quality Gate Check
+
+on:
+  push:
+    branches:
+      - main  # Set the branch you want to trigger this workflow on
+  pull_request:
+    branches:
+      - main  # Set the branch you want to trigger this workflow on
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'  # Change to your desired Java version
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build and analyze with SonarQube
+        run: |
+          mvn clean install sonar:sonar \
+            -Dsonar.host.url=<SONARQUBE_SERVER_URL> \
+            -Dsonar.login=<SONARQUBE_AUTH_TOKEN> \
+            -Dsonar.qualitygate.wait=true
+        env:
+          SONARQUBE_SERVER_URL: ${{ secrets.SONARQUBE_SERVER_URL }}
+          SONARQUBE_AUTH_TOKEN: ${{ secrets.SONARQUBE_AUTH_TOKEN }}
+
+      - name: Check SonarQube Quality Gate status
+        run: |
+          STATUS=$(curl -s "${SONARQUBE_SERVER_URL}/api/qualitygates/project_status?projectKey=<PROJECT_KEY>" \
+                    -u "${SONARQUBE_AUTH_TOKEN}": | jq -r .projectStatus.status)
+          echo "SonarQube Quality Gate status: $STATUS"
+          if [ "$STATUS" != "OK" ]; then
+            echo "Quality Gate check failed!"
+            exit 1
+          fi
