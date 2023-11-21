@@ -3,10 +3,10 @@ name: SonarQube Quality Gate Check
 on:
   push:
     branches:
-      - main  # Set the branch you want to trigger this workflow on
+      - "*" # Set the branch you want to trigger this workflow on
   pull_request:
     branches:
-      - main  # Set the branch you want to trigger this workflow on
+      - "*" # Set the branch you want to trigger this workflow on
 
 jobs:
   sonarqube:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
-          java-version: '11'  # Change to your desired Java version
+          java-version: "11"
 
       - name: Cache Maven dependencies
         uses: actions/cache@v2
@@ -32,17 +32,17 @@ jobs:
       - name: Build and analyze with SonarQube
         run: |
           mvn clean install sonar:sonar \
-            -Dsonar.host.url=<SONARQUBE_SERVER_URL> \
-            -Dsonar.login=<SONARQUBE_AUTH_TOKEN> \
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.host.url=${{ secrets.SONARQUBE_SERVER_URL }} \
+            -Dsonar.login=${{ secrets.SONARQUBE_AUTH_TOKEN }} \
+            -Dsonar.projectKey=QulityGateTest
         env:
           SONARQUBE_SERVER_URL: ${{ secrets.SONARQUBE_SERVER_URL }}
           SONARQUBE_AUTH_TOKEN: ${{ secrets.SONARQUBE_AUTH_TOKEN }}
 
       - name: Check SonarQube Quality Gate status
         run: |
-          STATUS=$(curl -s "${SONARQUBE_SERVER_URL}/api/qualitygates/project_status?projectKey=<PROJECT_KEY>" \
-                    -u "${SONARQUBE_AUTH_TOKEN}": | jq -r .projectStatus.status)
+          STATUS=$(curl -s "${{ secrets.SONARQUBE_SERVER_URL }}/api/qualitygates/project_status?projectKey=${{ secrets.PROJECT_KEY }}" \
+                    -u "${{ secrets.SONARQUBE_PROJECT_TOKEN }}" | jq -r .projectStatus.status)
           echo "SonarQube Quality Gate status: $STATUS"
           if [ "$STATUS" != "OK" ]; then
             echo "Quality Gate check failed!"
